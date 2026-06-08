@@ -38,7 +38,6 @@ const Admin = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          localStorage.removeItem('is_admin_logged');
           navigate('/login', { replace: true });
         }
       } finally {
@@ -136,8 +135,7 @@ const Admin = () => {
           <button
             onClick={async () => {
               await supabase.auth.signOut();
-              localStorage.removeItem('is_admin_logged');
-              navigate('/');
+              navigate('/login');
             }}
             className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-[0.98] text-sm"
           >

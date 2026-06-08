@@ -6,13 +6,39 @@ import DetalhesOS from './pages/DetalhesOS.tsx';
 import Sidebar from './components/layout/Sidebar.tsx';
 import Navbar from './components/layout/Navbar.tsx';
 import { OSDataProvider } from './context/OSDataContext.tsx';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { supabase } from './lib/supabase';
 
 // Componente para proteger rotas administrativas
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const isAdmin = localStorage.getItem('is_admin_logged') === 'true';
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // 1. Verificar sessão atual no Supabase
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // 2. Escutar mudanças de estado da autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Enquanto a verificação não termina, exibimos um loading (ou null para evitar piscar tela)
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-foreground">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
-  if (!isAdmin) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   

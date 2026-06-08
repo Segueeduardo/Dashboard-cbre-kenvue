@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ClipboardList, Upload, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOSData } from '../../context/OSDataContext';
+import { supabase } from '../../lib/supabase';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -20,7 +21,19 @@ const Sidebar = () => {
     }).length;
   }, [dados]);
 
-  const isAdmin = localStorage.getItem('is_admin_logged') === 'true';
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAdmin(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAdmin(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const menuItems = [
     {

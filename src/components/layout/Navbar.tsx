@@ -1,15 +1,21 @@
 import { Bell, Search, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
-  const location = useLocation();
 
-  // Escuta mudanças de rota para revalidar se o admin está logado
   useEffect(() => {
-    setIsAdmin(localStorage.getItem('is_admin_logged') === 'true');
-  }, [location.pathname]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAdmin(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAdmin(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm px-4 md:px-8 flex items-center justify-between sticky top-0 z-10">

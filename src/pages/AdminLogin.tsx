@@ -22,7 +22,6 @@ const AdminLogin = () => {
       setError('Credenciais inválidas. Verifique seu e-mail e senha no Supabase.');
       setLoading(false);
     } else {
-      localStorage.setItem('is_admin_logged', 'true');
       navigate('/admin');
     }
   };

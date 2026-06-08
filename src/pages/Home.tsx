@@ -323,14 +323,14 @@ const Home = () => {
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight mb-3">Dashboard de OS</h1>
         <p className="text-muted-foreground font-medium max-w-md mb-8">
-          Nenhuma planilha foi importada ainda. Acesse a página de importação para carregar seus dados de Ordens de Serviço.
+          Nenhuma planilha foi importada ainda. Acesse a página de login para importar seus dados.
         </p>
         <Link
-          to="/admin"
+          to="/login"
           className="bg-primary text-primary-foreground px-8 py-3.5 rounded-xl font-bold flex items-center gap-3 hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
         >
           <Upload className="w-5 h-5" />
-          Importar Planilha
+          Fazer Login (Admin)
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
