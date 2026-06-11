@@ -37,16 +37,16 @@ const Sidebar = () => {
 
   const menuItems = [
     {
-      title: 'OS Dashboard',
+      title: 'Dashboard',
       icon: ClipboardList,
       path: '/',
-      badge: semClassificacao > 0 ? semClassificacao : null,
+      badge: null,
     },
-    { 
-      title: 'Importar Dados', 
-      icon: Upload, 
-      path: isAdmin ? '/admin' : '/login', 
-      badge: null 
+    {
+      title: 'Importar Dados',
+      icon: Upload,
+      path: isAdmin ? '/admin' : '/login',
+      badge: null
     },
   ];
 
@@ -54,7 +54,7 @@ const Sidebar = () => {
     <div
       className={cn(
         'hidden md:flex flex-col bg-card border-r border-border shrink-0 transition-all duration-300 relative',
-        isCollapsed ? 'w-20' : 'w-64'
+        isCollapsed ? 'w-12' : 'w-48'
       )}
     >
       {/* Botão de Toggle (Recolher/Expandir) */}
@@ -84,7 +84,7 @@ const Sidebar = () => {
             to={item.path}
             title={isCollapsed ? item.title : undefined}
             className={cn(
-              'flex items-center gap-3 py-3 rounded-lg transition-all duration-200 group relative',
+              'flex items-center gap-3 py-3 rounded-lg transition-all duration-200 group relative text-sm',
               isCollapsed ? 'justify-center px-0' : 'px-4',
               location.pathname === item.path
                 ? 'bg-primary/10 text-primary font-medium'

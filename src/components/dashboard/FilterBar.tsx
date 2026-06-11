@@ -24,10 +24,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
   filtrosAtivos,
 }) => {
   const selectClass =
-    'bg-card/60 backdrop-blur-md border border-border rounded-xl px-4 py-2.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all appearance-none cursor-pointer hover:border-primary/30 min-w-[160px]';
+    'bg-card/60 backdrop-blur-md border border-border rounded-xl px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all appearance-none cursor-pointer hover:border-primary/30 min-w-[120px]';
 
   const inputClass =
-    'bg-card/60 backdrop-blur-md border border-border rounded-xl px-4 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all hover:border-primary/30';
+    'bg-card/60 backdrop-blur-md border border-border rounded-xl px-3 py-2 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all hover:border-primary/30';
 
   return (
     <div className="bg-card/30 backdrop-blur-xl rounded-2xl border border-border p-5 space-y-4">
@@ -56,7 +56,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         {/* Busca por OS */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -118,19 +118,20 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </select>
 
         {/* Período - uso grid para dividir em 2 datas */}
-        <div className="flex gap-2">
+        <div className="flex justify-start gap-2 sm:col-span-2 lg:col-span-2 xl:col-span-2">
           <input
             type="date"
             value={filtros.periodoInicio}
             onChange={(e) => onFiltroChange('periodoInicio', e.target.value)}
-            className={`${inputClass} flex-1 min-w-0`}
+            className={`${inputClass} w-[130px]`}
+
             title="Data inicial"
           />
           <input
             type="date"
             value={filtros.periodoFim}
             onChange={(e) => onFiltroChange('periodoFim', e.target.value)}
-            className={`${inputClass} flex-1 min-w-0`}
+            className={`${inputClass} w-[130px]`}
             title="Data final"
           />
         </div>

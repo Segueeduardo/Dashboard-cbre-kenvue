@@ -168,14 +168,22 @@ const Home = () => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
+    // Janela de 30 dias: só considera OS abertas nos últimos 30 dias
+    const dataInicio = new Date(hoje);
+    dataInicio.setDate(dataInicio.getDate() - 30);
+
     const naoClassificadas = dadosFiltrados.filter((os) => {
       const g = os['Grupo de Serviço'];
       const e = os['Equipe'];
       const hasG = g && typeof g === 'string' && g.trim() !== '';
       const hasE = e && typeof e === 'string' && e.trim() !== '';
-      if (hasG && hasE) return false;
+      if (hasG && hasE) return false; // já tem classificação completa
+
       const data = parseData(os['Relatado Em']);
-      return data !== null;
+      if (!data) return false;
+
+      // Filtro: apenas OS abertas nos últimos 30 dias
+      return data >= dataInicio;
     });
 
     if (naoClassificadas.length === 0) return 0;
@@ -342,17 +350,16 @@ const Home = () => {
       {/* ─── Header ─── */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Dashboard de Ordens de Serviço Medtech</h1>
-          <p className="text-muted-foreground text-sm font-medium mt-1">
-            {totalOrdens.toLocaleString('pt-BR')} ordens encontradas
-            {filtrosAtivos > 0 && ` (filtro aplicado)`}
-            {ultimaAtualizacao && (
-              <span className="text-muted-foreground/60">
-                {' · '}Atualizado em {ultimaAtualizacao.toLocaleDateString('pt-BR')}{' '}
-                {ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight inline-block bg-white text-[#e31837] px-4 py-2 rounded-xl shadow-sm border border-border/50">
+            Dashboard  Maximo  Johnson &amp; Johnson
+          </h1>
+          {ultimaAtualizacao && (
+            <p className="text-muted-foreground text-sm font-medium mt-1">
+              Atualizado em {ultimaAtualizacao.toLocaleDateString('pt-BR')}{' '}
+              {ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              {filtrosAtivos > 0 && <span className="ml-2 text-muted-foreground/60">(filtro aplicado)</span>}
+            </p>
+          )}
         </div>
       </header>
 
@@ -518,8 +525,8 @@ const Home = () => {
           <button
             onClick={() => setActiveTab('semClassif')}
             className={`flex-1 px-6 py-4 text-sm font-bold transition-all ${activeTab === 'semClassif'
-                ? 'bg-orange-500/10 text-orange-400 border-b-2 border-orange-400'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/30'
+              ? 'bg-orange-500/10 text-orange-400 border-b-2 border-orange-400'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/30'
               }`}
           >
             ⚠️ OS Sem Classificação
@@ -532,8 +539,8 @@ const Home = () => {
           <button
             onClick={() => setActiveTab('vencimentos')}
             className={`flex-1 px-6 py-4 text-sm font-bold transition-all ${activeTab === 'vencimentos'
-                ? 'bg-red-500/10 text-red-400 border-b-2 border-red-400'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/30'
+              ? 'bg-red-500/10 text-red-400 border-b-2 border-red-400'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/30'
               }`}
           >
             🕐 Vencimentos Próximos

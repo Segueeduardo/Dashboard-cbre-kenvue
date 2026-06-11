@@ -1,9 +1,28 @@
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Moon, Sun, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -19,16 +38,20 @@ const Navbar = () => {
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm px-4 md:px-8 flex items-center justify-between sticky top-0 z-10">
-      <div className="flex items-center gap-4 bg-accent/50 rounded-full px-4 py-1.5 border border-border/50 max-w-md w-full focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-        <Search className="w-4 h-4 text-muted-foreground mr-2 shrink-0" />
-        <input 
-          type="text" 
-          placeholder="Pesquisar métricas..." 
-          className="bg-transparent border-none focus:outline-none text-sm w-full placeholder:text-muted-foreground/60"
-        />
+      <div className="flex items-center">
+        {/* Barra de pesquisa removida conforme solicitado */}
       </div>
       
       <div className="flex items-center gap-4">
+        <button 
+          onClick={toggleTheme} 
+          className="relative px-4 h-10 rounded-full bg-accent hover:bg-accent/80 flex items-center justify-center gap-2 transition-colors text-foreground"
+          title={`Mudar para modo ${theme === 'dark' ? 'claro' : 'escuro'}`}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          <span className="text-sm font-semibold">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+        </button>
+
         <button className="relative w-10 h-10 rounded-full bg-accent hover:bg-accent/80 flex items-center justify-center transition-colors">
           <Bell className="w-5 h-5 text-foreground" />
           <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-primary border-2 border-accent" />
