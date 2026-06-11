@@ -9,6 +9,8 @@ interface GaugeChartProps {
   label?: string;
   /** Subtítulo */
   sublabel?: string;
+  /** Ação ao clicar no card */
+  onClick?: () => void;
 }
 
 /**
@@ -21,6 +23,7 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
   max = 15,
   label = 'Dias sem classificar',
   sublabel,
+  onClick,
 }) => {
   const clampedValue = Math.min(Math.max(valor, 0), max);
 
@@ -124,7 +127,12 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
   }, [cx, cy, radius, max]);
 
   return (
-    <div className={`bg-gradient-to-br ${bgGradient} backdrop-blur-xl rounded-3xl border border-border p-6 flex flex-col items-center transition-all duration-500`}>
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`bg-gradient-to-br ${bgGradient} backdrop-blur-xl rounded-3xl border border-border p-6 flex flex-col items-center transition-all duration-500 ${onClick ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98]' : ''}`}
+    >
       <svg width={svgSize} height={svgSize * 0.7} viewBox={`0 0 ${svgSize} ${svgSize * 0.75}`}>
         {/* Arco de fundo */}
         <path

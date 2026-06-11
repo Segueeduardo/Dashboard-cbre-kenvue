@@ -14,33 +14,38 @@ function parseData(val: string | Date | undefined | null): Date | null {
 const TITULO_POR_FILTRO: Record<string, string> = {
   'todos': 'Todas as Ordens',
   'sem-classificacao': 'OS Sem Classificação',
+  'sem-classificacao-30-dias': 'OS Sem Classificação - Últimos 30 Dias',
   'com-classificacao': 'OS Com Classificação',
   'proximas': 'Próximas do Vencimento',
   'vencidas': 'OS Vencidas',
 };
 
 const DetalhesOS: React.FC = () => {
-  const { dados, ultimaAtualizacao } = useOSData();
+  const { dados } = useOSData();
   const location = useLocation();
   const filtroInicial = location.state?.filtroInicial || 'todos';
   const filtrosGlobais: FiltrosDashboard | null = location.state?.filtrosGlobais || null;
 
   const [buscaOS, setBuscaOS] = useState('');
   const [grupoServico, setGrupoServico] = useState('Todos');
+  const [equipe, setEquipe] = useState('Todos');
   const [relatadoPor, setRelatadoPor] = useState('Todos');
 
   // Valores únicos pros selects
   const valoresUnicos = useMemo(() => {
     const grupos = new Set<string>();
+    const equipes = new Set<string>();
     const relatores = new Set<string>();
     
     dados.forEach(os => {
       if (os['Grupo de Serviço'] && String(os['Grupo de Serviço']).trim()) grupos.add(String(os['Grupo de Serviço']).trim());
+      if (os['Equipe'] && String(os['Equipe']).trim()) equipes.add(String(os['Equipe']).trim());
       if (os['Relatado Por'] && String(os['Relatado Por']).trim()) relatores.add(String(os['Relatado Por']).trim());
     });
     
     return {
       grupos: Array.from(grupos).sort(),
+      equipes: ['Sem equipe', ...Array.from(equipes).sort()],
       relatores: Array.from(relatores).sort()
     };
   }, [dados]);
@@ -98,6 +103,22 @@ const DetalhesOS: React.FC = () => {
       case 'sem-classificacao':
         result = result.filter(os => !os['Grupo de Serviço'] || String(os['Grupo de Serviço']).trim() === '');
         break;
+      case 'sem-classificacao-30-dias': {
+        const dataInicio = new Date(hoje);
+        dataInicio.setDate(dataInicio.getDate() - 30);
+        result = result.filter(os => {
+          const g = os['Grupo de Serviço'];
+          const e = os['Equipe'];
+          const hasG = g && typeof g === 'string' && g.trim() !== '';
+          const hasE = e && typeof e === 'string' && e.trim() !== '';
+          if (hasG && hasE) return false;
+
+          const data = parseData(os['Relatado Em']);
+          if (!data) return false;
+          return data >= dataInicio;
+        });
+        break;
+      }
       case 'com-classificacao':
         result = result.filter(os => os['Grupo de Serviço'] && String(os['Grupo de Serviço']).trim() !== '');
         break;
@@ -128,16 +149,24 @@ const DetalhesOS: React.FC = () => {
     if (grupoServico !== 'Todos') {
       result = result.filter(os => String(os['Grupo de Serviço']).trim() === grupoServico);
     }
+    if (equipe !== 'Todos') {
+      result = result.filter(os => {
+        const eqStr = String(os['Equipe'] || '').trim();
+        if (equipe === 'Sem equipe') return eqStr === '';
+        return eqStr === equipe;
+      });
+    }
     if (relatadoPor !== 'Todos') {
       result = result.filter(os => String(os['Relatado Por']).trim() === relatadoPor);
     }
 
     return result;
-  }, [dados, filtroInicial, buscaOS, grupoServico, relatadoPor]);
+  }, [dados, filtroInicial, filtrosGlobais, buscaOS, grupoServico, equipe, relatadoPor]);
 
   const limparFiltros = () => {
     setBuscaOS('');
     setGrupoServico('Todos');
+    setEquipe('Todos');
     setRelatadoPor('Todos');
   };
 
@@ -175,10 +204,6 @@ const DetalhesOS: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> Voltar ao Dashboard
         </Link>
         <h1 className="text-2xl font-black tracking-tight">Ordens de Serviço - {TITULO_POR_FILTRO[filtroInicial] || 'Todas'}</h1>
-        <p className="text-sm font-medium text-muted-foreground mt-1">
-          {dadosFiltrados.length} ordens encontradas 
-          {ultimaAtualizacao ? ` · Atualizado em ${ultimaAtualizacao.toLocaleDateString('pt-BR')} às ${ultimaAtualizacao.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}` : ''}
-        </p>
       </div>
 
       {/* Filter Bar */}
@@ -203,7 +228,7 @@ const DetalhesOS: React.FC = () => {
           {valoresUnicos.relatores.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
-        {(buscaOS || grupoServico !== 'Todos' || relatadoPor !== 'Todos') && (
+        {(buscaOS || grupoServico !== 'Todos' || equipe !== 'Todos' || relatadoPor !== 'Todos') && (
           <button 
             onClick={limparFiltros}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-sm font-bold transition-all"
@@ -246,7 +271,19 @@ const DetalhesOS: React.FC = () => {
                       <Filter className="w-3 h-3 text-muted-foreground/50 ml-1 pointer-events-none group-hover/filter:text-foreground transition-colors" />
                     </div>
                   </th>
-                  <th className="w-[130px] text-center">Data Limite</th>
+                  <th className="w-[180px]">
+                    <div className="relative group/filter flex items-center">
+                      <select 
+                        value={equipe}
+                        onChange={e => setEquipe(e.target.value)}
+                        className="bg-transparent text-muted-foreground uppercase tracking-wider font-bold text-xs appearance-none focus:outline-none cursor-pointer w-full"
+                      >
+                        <option value="Todos">EQUIPE</option>
+                        {valoresUnicos.equipes.map(eq => <option key={eq} value={eq}>{eq}</option>)}
+                      </select>
+                      <Filter className="w-3 h-3 text-muted-foreground/50 ml-1 pointer-events-none group-hover/filter:text-foreground transition-colors" />
+                    </div>
+                  </th>
                   <th className="w-[200px] text-center">Status</th>
                 </tr>
               </thead>
@@ -280,8 +317,8 @@ const DetalhesOS: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="text-center text-sm font-medium text-muted-foreground">
-                        {os['Terminar Não Após De'] ? new Date(os['Terminar Não Após De']).toLocaleDateString('pt-BR') : '-'}
+                      <td className="text-sm font-medium text-muted-foreground">
+                        {os['Equipe'] && String(os['Equipe']).trim() ? String(os['Equipe']).trim() : '—'}
                       </td>
                       <td className="text-center">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs ${statusInfo.style}`}>

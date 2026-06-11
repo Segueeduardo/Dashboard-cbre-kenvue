@@ -5,7 +5,7 @@ import {
   BarChart, Bar,
 } from 'recharts';
 import { ClipboardList, Upload, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useOSData } from '../context/OSDataContext';
 import type { FiltrosDashboard } from '../types/os.types';
@@ -41,6 +41,7 @@ function parseData(val: string | Date | undefined | null): Date | null {
    COMPONENTE PRINCIPAL: DASHBOARD DE OS
    ══════════════════════════════════════════ */
 const Home = () => {
+  const navigate = useNavigate();
   const { dados, ultimaAtualizacao, totalRegistros } = useOSData();
   const [filtros, setFiltros] = useState<FiltrosDashboard>(FILTROS_INICIAIS);
   const [activeTab, setActiveTab] = useState<'semClassif' | 'vencimentos'>('semClassif');
@@ -350,7 +351,7 @@ const Home = () => {
       {/* ─── Header ─── */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight inline-block bg-white text-[#e31837] px-4 py-2 rounded-xl shadow-sm border border-border/50">
+          <h1 className="text-4xl font-jnj font-light tracking-tight inline-block bg-white text-[#D51900] px-4 py-2 rounded-xl shadow-sm border border-border/50">
             Dashboard  Maximo  Johnson &amp; Johnson
           </h1>
           {ultimaAtualizacao && (
@@ -393,6 +394,7 @@ const Home = () => {
             valor={mediaDiasSemClassificar}
             max={15}
             label="Média Dias s/ Classificação"
+            onClick={() => navigate('/detalhes-os', { state: { filtroInicial: 'sem-classificacao-30-dias', filtrosGlobais: filtros } })}
           />
         </div>
 
