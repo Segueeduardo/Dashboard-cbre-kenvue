@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ClipboardList, Upload, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,16 +10,7 @@ const Sidebar = () => {
   const location = useLocation();
   const { dados } = useOSData();
 
-  // Contar OS sem classificação para o badge
-  const semClassificacao = useMemo(() => {
-    return dados.filter((os) => {
-      const g = os['Grupo de Serviço'];
-      const e = os['Equipe'];
-      const noG = !g || (typeof g === 'string' && g.trim() === '');
-      const noE = !e || (typeof e === 'string' && e.trim() === '');
-      return noG || noE;
-    }).length;
-  }, [dados]);
+
 
   const [isAdmin, setIsAdmin] = useState(false);
 
