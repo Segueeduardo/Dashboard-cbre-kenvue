@@ -393,7 +393,7 @@ const Home = () => {
           <GaugeChart
             valor={mediaDiasSemClassificar}
             max={15}
-            label="Média Dias s/ Classificação"
+            label="Média 30 Dias s/ Classificação"
             onClick={() => navigate('/detalhes-os', { state: { filtroInicial: 'sem-classificacao-30-dias', filtrosGlobais: filtros } })}
           />
         </div>

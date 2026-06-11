@@ -12,6 +12,10 @@ interface KpiCardProps {
   colorClass: string; // ex: 'blue', 'orange', 'purple', 'red'
   trend?: { value: string; direction: 'up' | 'down' | 'neutral' };
   onClick?: () => void;
+  /** Animação de hover sem ação de clique */
+  hoverable?: boolean;
+  /** Variante compacta para cards menores */
+  compact?: boolean;
 }
 
 const COLOR_MAP: Record<string, { bg: string; icon: string; glow: string; badge: string; border: string }> = {
@@ -52,19 +56,24 @@ const COLOR_MAP: Record<string, { bg: string; icon: string; glow: string; badge:
   },
 };
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, value, subtitle, icon: Icon, colorClass, trend, onClick }) => {
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, subtitle, icon: Icon, colorClass, trend, onClick, hoverable, compact }) => {
   const colors = COLOR_MAP[colorClass] || COLOR_MAP.blue;
+  const hoverClass = onClick
+    ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98]'
+    : hoverable
+      ? 'cursor-default hover:shadow-2xl hover:-translate-y-1'
+      : 'hover:shadow-2xl cursor-default';
 
   return (
     <div
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`bg-gradient-to-br ${colors.bg} backdrop-blur-xl p-6 rounded-2xl border border-border group transition-all duration-300 ${colors.border} ${onClick ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98]' : 'hover:shadow-2xl cursor-default'} ${colors.glow} overflow-hidden relative`}
+      className={`bg-gradient-to-br ${colors.bg} backdrop-blur-xl ${compact ? 'p-4' : 'p-6'} rounded-2xl border border-border group transition-all duration-300 ${colors.border} ${hoverClass} ${colors.glow} overflow-hidden relative`}
     >
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className={`p-2.5 rounded-xl ${colors.icon} transition-all duration-300 shadow-inner`}>
-          <Icon className="w-5 h-5" />
+      <div className={`flex justify-between items-start ${compact ? 'mb-3' : 'mb-4'} relative z-10`}>
+        <div className={`${compact ? 'p-2' : 'p-2.5'} rounded-xl ${colors.icon} transition-all duration-300 shadow-inner`}>
+          <Icon className={compact ? 'w-4 h-4' : 'w-5 h-5'} />
         </div>
         {trend && (
           <span
@@ -81,8 +90,8 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, subtitle, icon: Icon, c
         )}
       </div>
       <div className="relative z-10">
-        <h3 className="text-muted-foreground text-sm font-medium mb-1 tracking-tight">{title}</h3>
-        <p className="text-3xl font-extrabold tracking-tight">{value}</p>
+        <h3 className={`text-muted-foreground ${compact ? 'text-xs' : 'text-sm'} font-medium mb-1 tracking-tight`}>{title}</h3>
+        <p className={`${compact ? 'text-2xl' : 'text-3xl'} font-extrabold tracking-tight`}>{value}</p>
         {subtitle && (
           <p className={`text-xs font-semibold mt-2 ${colors.badge} inline-block px-2 py-0.5 rounded-full`}>
             {subtitle}

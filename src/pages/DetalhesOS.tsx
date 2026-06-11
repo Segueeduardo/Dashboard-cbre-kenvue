@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useOSData } from '../context/OSDataContext';
-import { ArrowLeft, Search, Filter, X } from 'lucide-react';
+import { ArrowLeft, Search, Filter, X, AlertTriangle } from 'lucide-react';
+import { KpiCard } from '../components/dashboard/KpiCards';
 import type { OSRow, FiltrosDashboard } from '../types/os.types';
 
 function parseData(val: string | Date | undefined | null): Date | null {
@@ -205,6 +206,20 @@ const DetalhesOS: React.FC = () => {
         </Link>
         <h1 className="text-2xl font-black tracking-tight">Ordens de Serviço - {TITULO_POR_FILTRO[filtroInicial] || 'Todas'}</h1>
       </div>
+
+      {filtroInicial === 'sem-classificacao-30-dias' && (
+        <div className="max-w-xs">
+          <KpiCard
+            title="Sem Classificação"
+            value={dadosFiltrados.length.toLocaleString('pt-BR')}
+            subtitle="Últimos 30 dias"
+            icon={AlertTriangle}
+            colorClass="orange"
+            compact
+            hoverable
+          />
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-card/40 backdrop-blur-xl rounded-2xl border border-border p-5 flex flex-wrap lg:flex-nowrap gap-4 items-center">
