@@ -1,2 +1,2 @@
 
-dashboard.png
+![public](public/dashboard.png)
