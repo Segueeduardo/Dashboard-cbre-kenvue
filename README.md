@@ -1,4 +1,4 @@
-# Maximo Dashboard – Johnson & Johnson
+# Maximo Dashboard – Kenvue
 
 Este projeto extrai e organiza ordens de serviço (OS) do sistema IBM Maximo, permitindo uma gestão mais eficiente das equipes e do planejamento de manutenção da Johnson & Johnson.
 
