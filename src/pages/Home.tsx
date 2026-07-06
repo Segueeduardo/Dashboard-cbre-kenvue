@@ -351,8 +351,8 @@ const Home = () => {
       {/* ─── Header ─── */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-jnj font-light tracking-tight inline-block bg-white text-[#D51900] px-4 py-2 rounded-xl shadow-sm border border-border/50">
-            Dashboard  Maximo  Johnson &amp; Johnson
+          <h1 className="text-4xl font-jnj font-light tracking-tight inline-block bg-white text-[#008c45] px-4 py-2 rounded-xl shadow-sm border border-border/50">
+            Dashboard Maximo kenvue
           </h1>
           {ultimaAtualizacao && (
             <p className="text-muted-foreground text-sm font-medium mt-1">
