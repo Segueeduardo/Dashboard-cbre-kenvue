@@ -57,7 +57,7 @@ const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-accent/40 border border-border/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium"
-                placeholder="eduardo.cbre@outlook.com"
+                placeholder="juarez.silva@cbre.com"
                 required
               />
             </div>

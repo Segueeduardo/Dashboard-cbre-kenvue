@@ -27,4 +27,4 @@ dist-ssr
 scratch/
 *.xlsx
 .gemini/
-
+.env

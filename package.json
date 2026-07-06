@@ -1,5 +1,5 @@
 {
-  "name": "dashboard--cbre",
+  "name": "dashboard-cbre-kenvue",
   "private": true,
   "version": "0.0.0",
   "type": "module",
