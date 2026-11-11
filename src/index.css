@@ -2,65 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Identidade Manserv: preto sobre branco, laranja (#E45228) como acento */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 0% 95%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 74% 49%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 89%;
+    --input: 0 0% 82%;
+    --ring: 13 78% 53%;
+
+    --brand: 13 78% 53%;
+    --brand-foreground: 0 0% 0%;
+
+    /* Painel de destaque: sempre preto, nos dois temas */
+    --ink: 0 0% 0%;
+    --ink-foreground: 0 0% 100%;
+
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 66%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 74% 49%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 0 0% 19%;
+    --input: 0 0% 26%;
+    --ring: 13 78% 53%;
+
+    --ink: 0 0% 9%;
   }
 }
 
@@ -69,52 +81,48 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-@layer components {
-  :root:not(.dark) .bg-card {
-    @apply shadow-md;
+@layer utilities {
+  /* Traço inclinado do logo Manserv */
+  .traco {
+    transform: skewX(-32deg);
   }
+}
 
-  /* Comportamento Excel para tabela - Estilizado p/ o Tema do Dashboard */
-  .tabela-os {
-      @apply min-w-full divide-y divide-border;
+/* Login: a foto aproxima devagar e o card de vidro sobe ao abrir */
+@keyframes login-zoom {
+  from { transform: scale(1.05); }
+  to { transform: scale(1); }
+}
+@keyframes login-entrada {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.login-fundo {
+  animation: login-zoom 14s ease-out both;
+  transform-origin: left center;
+}
+/* Em telas largas a foto aparece inteira à esquerda e some suavemente para a direita */
+@media (min-width: 1024px) {
+  .login-fundo {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 38%, transparent 56%);
+    mask-image: linear-gradient(to right, #000 0, #000 38%, transparent 56%);
   }
+}
+.login-card {
+  animation: login-entrada 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 
-  .tabela-os td {
-      @apply px-4 py-3 align-top; /* Texto começa no topo */
-  }
-
-  .tabela-os .descricao-cell {
-      max-width: 400px;
-      min-width: 200px;
-      white-space: normal;
-      word-break: break-word;
-      line-height: 1.5;
-  }
-
-  /* Linhas vencidas */
-  .tabela-os tbody tr.vencida {
-      @apply bg-red-500/10; /* substituído red-50 pra ter transparência no dark mode */
-  }
-
-  .tabela-os tbody tr.vencida:hover {
-      @apply bg-red-500/20;
-  }
-
-  /* Linhas normais hover */
-  .tabela-os tbody tr:hover {
-      @apply bg-accent/30; /* integrado com variáveis Shadcn UI ao invés do gray-50 seco */
-  }
-
-  /* Cabeçalho fixo */
-  .tabela-os thead {
-      @apply sticky top-0 z-10 bg-card backdrop-blur-md; /* suporta background com alpha */
-  }
-
-  .tabela-os th {
-      @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

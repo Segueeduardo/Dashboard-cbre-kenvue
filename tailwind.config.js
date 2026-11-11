@@ -9,6 +9,14 @@ export default {
   	extend: {
   		colors: {
   			border: 'hsl(var(--border))',
+  			brand: {
+  				DEFAULT: 'hsl(var(--brand))',
+  				foreground: 'hsl(var(--brand-foreground))'
+  			},
+  			ink: {
+  				DEFAULT: 'hsl(var(--ink))',
+  				foreground: 'hsl(var(--ink-foreground))'
+  			},
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			background: 'hsl(var(--background))',
@@ -43,7 +51,7 @@ export default {
   			}
   		},
   		fontFamily: {
-  			jnj: ['"Inter"', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+  			sans: ['Figtree', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'Arial', 'sans-serif'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
