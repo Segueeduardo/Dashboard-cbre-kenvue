@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ClipboardList, Upload, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Upload, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useOSData } from '../../context/OSDataContext';
+import { useFechamento } from '../../context/FechamentoContext';
 import { supabase } from '../../lib/supabase';
+import logo from '@/assets/manserv-logo.png';
+import marca from '@/assets/manserv-mark.png';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
-  const { dados } = useOSData();
+  const { totalUTs } = useFechamento();
 
 
 
@@ -28,8 +30,8 @@ const Sidebar = () => {
 
   const menuItems = [
     {
-      title: 'Dashboard',
-      icon: ClipboardList,
+      title: 'Fechamento',
+      icon: BarChart3,
       path: '/',
       badge: null,
     },
@@ -45,13 +47,13 @@ const Sidebar = () => {
     <div
       className={cn(
         'hidden md:flex flex-col bg-card border-r border-border shrink-0 transition-all duration-300 relative',
-        isCollapsed ? 'w-12' : 'w-48'
+        isCollapsed ? 'w-14' : 'w-52'
       )}
     >
       {/* Botão de Toggle (Recolher/Expandir) */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-4 top-8 bg-primary text-primary-foreground border-[3px] border-background rounded-full p-1.5 shadow-xl hover:scale-110 hover:shadow-primary/30 hover:bg-primary/95 transition-all z-50 hidden md:flex ring-1 ring-border"
+        className="absolute -right-4 top-8 bg-primary text-primary-foreground border-[3px] border-background rounded-full p-1.5 shadow-xl hover:scale-110  transition-all z-50 hidden md:flex ring-1 ring-border"
         title={isCollapsed ? 'Expandir Sidebar' : 'Recolher Sidebar'}
       >
         {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
@@ -59,11 +61,11 @@ const Sidebar = () => {
 
       <div className={cn('p-6 flex items-center', isCollapsed ? 'justify-center px-2' : 'justify-start')}>
         <img
-          src="/cbre-logo.png?v=2"
-          alt="CBRE Logo"
+          src={isCollapsed ? marca : logo}
+          alt="Manserv"
           className={cn(
-            "rounded-xl transition-all duration-300 object-contain",
-            isCollapsed ? "w-10 h-10" : "w-auto h-12 max-w-[180px]"
+            'transition-all duration-300 object-contain dark:bg-white dark:rounded-lg dark:p-1.5',
+            isCollapsed ? 'w-8 h-8' : 'w-auto h-20 max-w-[150px]'
           )}
         />
       </div>
@@ -78,7 +80,7 @@ const Sidebar = () => {
               'flex items-center gap-3 py-3 rounded-lg transition-all duration-200 group relative text-sm',
               isCollapsed ? 'justify-center px-0' : 'px-4',
               location.pathname === item.path
-                ? 'bg-primary/10 text-primary font-medium'
+                ? 'bg-accent text-foreground font-semibold'
                 : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             )}
           >
@@ -86,7 +88,7 @@ const Sidebar = () => {
               <item.icon
                 className={cn(
                   'w-5 h-5 transition-colors shrink-0',
-                  location.pathname === item.path ? 'text-primary' : 'group-hover:text-foreground'
+                  location.pathname === item.path ? 'text-brand' : 'group-hover:text-foreground'
                 )}
               />
               {/* Badge mode compact */}
@@ -105,7 +107,7 @@ const Sidebar = () => {
             )}
 
             {location.pathname === item.path && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brand rounded-r-full" />
             )}
           </Link>
         ))}
@@ -120,8 +122,8 @@ const Sidebar = () => {
             'flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200 text-sm group',
             isCollapsed ? 'justify-center px-0' : 'px-4',
             location.pathname === '/login'
-              ? 'bg-primary/10 text-primary font-medium'
-              : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent/50'
+              ? 'bg-accent text-foreground font-semibold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
           )}
         >
           <LogIn className="w-5 h-5 shrink-0" />
@@ -134,28 +136,28 @@ const Sidebar = () => {
         {isCollapsed ? (
           <div
             className="flex items-center justify-center h-12 bg-accent/20 rounded-xl cursor-default"
-            title={`${dados.length > 0 ? dados.length.toLocaleString('pt-BR') : 'Sem'} OS carregadas`}
+            title={`${totalUTs > 0 ? totalUTs : 'Sem'} UTs carregadas`}
           >
             <div
               className={cn(
                 'w-3 h-3 rounded-full',
-                dados.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'
+                totalUTs > 0 ? 'bg-brand' : 'bg-muted-foreground'
               )}
             />
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl p-4 border border-primary/10 overflow-hidden">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Status</p>
+          <div className="rounded-xl p-4 border border-border overflow-hidden">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Dados</p>
             <div className="flex items-center gap-2">
               <div
                 className={cn(
                   'w-2 h-2 rounded-full shrink-0',
-                  dados.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'
+                  totalUTs > 0 ? 'bg-brand' : 'bg-muted-foreground'
                 )}
               />
               <span className="text-sm font-medium whitespace-nowrap truncate">
-                {dados.length > 0
-                  ? `${dados.length.toLocaleString('pt-BR')} OS carregadas`
+                {totalUTs > 0
+                  ? `${totalUTs} UTs carregadas`
                   : 'Sem dados'}
               </span>
             </div>

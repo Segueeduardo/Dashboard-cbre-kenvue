@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import logo from '@/assets/manserv-logo.png';
+import sede from '@/assets/manserv-sede.jpg';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -27,51 +29,54 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-1000 scale-105"
-        style={{ backgroundImage: "url('/login-bg.png')" }}
-      >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-      </div>
+    <div className="relative -m-4 md:-m-6 lg:-m-8 min-h-[calc(100vh-4rem)] flex items-center justify-center lg:justify-end p-4 sm:p-8 lg:pr-[8%] overflow-hidden bg-black">
+      {/* Foto da sede Manserv: cópia desfocada preenche a tela, a nítida aparece inteira */}
+      <img src={sede} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-50" />
+      <img
+        src={sede}
+        alt=""
+        aria-hidden="true"
+        className="login-fundo absolute inset-0 w-full h-full object-cover object-[center_30%] lg:object-contain lg:object-left"
+      />
+      <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/10 to-transparent" />
 
-      <div className="w-full max-w-md px-8 py-10 bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 shadow-2xl relative z-10 overflow-hidden group">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-secondary to-primary animate-gradient-x" />
-        
-        <div className="mb-10 text-center relative z-10">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500 shadow-inner">
-            <LogIn className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight mb-2">Painel Admin</h2>
-          <p className="text-muted-foreground font-medium">Faça login para gerenciar os dados</p>
+      {/* Card de vidro: sempre claro, independente do tema */}
+      <div className="login-card relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-white/50 bg-white/75 px-8 py-10 text-black shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-brand" />
+        {/* Brilho laranja que acompanha o topo do vidro */}
+        <div className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-brand/30 blur-3xl" />
+
+        <div className="mb-8 text-center relative z-10">
+          <img src={logo} alt="Manserv" className="h-20 w-auto mx-auto mb-6" />
+          <h2 className="text-3xl font-bold tracking-tight mb-2">Importar dados</h2>
+          <p className="text-black/60 font-medium">Entre para publicar a planilha de fechamento</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6 relative z-10">
           <div className="space-y-2">
-            <label className="text-sm font-semibold ml-1 text-foreground/80">E-mail</label>
+            <label className="text-sm font-semibold ml-1 text-black/80">E-mail</label>
             <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/50 group-focus-within:text-brand transition-colors" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-accent/40 border border-border/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium"
-                placeholder="juarez.silva@cbre.com"
+                className="w-full bg-white/70 border border-black/10 rounded-2xl py-3.5 pl-12 pr-4 text-black placeholder:text-black/40 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-0 focus:border-brand focus:bg-white transition-all text-sm font-medium"
+                placeholder="nome@manserv.com.br"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold ml-1 text-foreground/80">Senha</label>
+            <label className="text-sm font-semibold ml-1 text-black/80">Senha</label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/50 group-focus-within:text-brand transition-colors" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-accent/40 border border-border/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium"
+                className="w-full bg-white/70 border border-black/10 rounded-2xl py-3.5 pl-12 pr-4 text-black placeholder:text-black/40 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-0 focus:border-brand focus:bg-white transition-all text-sm font-medium"
                 placeholder="••••••••"
                 required
               />
@@ -79,7 +84,7 @@ const AdminLogin = () => {
           </div>
 
           {error && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs py-3 px-4 rounded-xl font-medium animate-shake">
+            <div className="bg-red-600/10 border border-red-600/30 text-red-700 text-xs py-3 px-4 rounded-xl font-medium animate-shake">
               {error}
             </div>
           )}
@@ -88,7 +93,7 @@ const AdminLogin = () => {
             type="submit"
             disabled={loading}
             className={cn(
-              "w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-primary/20",
+              "w-full bg-black text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand hover:text-black active:scale-[0.98] transition-colors",
               loading && "opacity-80 cursor-not-allowed"
             )}
           >
@@ -96,18 +101,17 @@ const AdminLogin = () => {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                Entrar no Painel
+                Entrar
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
           </button>
         </form>
         
-        <p className="mt-8 text-center text-xs text-muted-foreground/60">
-          Dev Regis -CBRE Dashboard v1.0
+        <p className="mt-8 text-center text-xs text-black/50">
+          Manserv | Fechamento de Medição
         </p>
         
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
       </div>
     </div>
   );

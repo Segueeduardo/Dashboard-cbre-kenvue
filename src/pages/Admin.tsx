@@ -2,35 +2,27 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
   Upload, FileSpreadsheet, CheckCircle2, LayoutPanelTop,
-  Trash2, ArrowLeft, Database, ClipboardList, LogIn, Loader2
+  Trash2, ArrowLeft, Database, ClipboardList, LogIn, Loader2, AlertTriangle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useOSData } from '../context/OSDataContext';
-import type { OSRow } from '../types/os.types';
+import { useFechamento } from '../context/FechamentoContext';
+import type { Fechamento } from '../types/fechamento.types';
+import { META_MB_PADRAO } from '../types/fechamento.types';
+import { classificar, fmtPct, parseFechamento } from '../lib/fechamento';
+import { CategoriaBadge } from '../components/dashboard/UTTable';
 import { supabase } from '../lib/supabase';
 
-const COLUNAS_ESPERADAS = [
-  'Ordem de Serviço',
-  'Relatado Em',
-  'Grupo de Serviço',
-  'Equipe',
-  'Local',
-  'Status',
-  'Tipo de Serviço',
-  'Terminar Não Após De',
-  'Ativo',
-];
-
 const Admin = () => {
-  const { setDadosFromUpload, limparDados, ultimaAtualizacao, totalRegistros } = useOSData();
+  const { salvarFechamento, limparDados, ultimaAtualizacao, totalUTs } = useFechamento();
   const navigate = useNavigate();
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [fileInfo, setFileInfo] = useState<any>(null);
+  const [preview, setPreview] = useState<Fechamento | null>(null);
+  const [metaMB, setMetaMB] = useState<number>(META_MB_PADRAO);
+  const [fileInfo, setFileInfo] = useState<{ name: string; size: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [importSuccess, setImportSuccess] = useState(false);
-  const [colunasDetectadas, setColunasDetectadas] = useState<string[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
 
   // Validação de Sessão Real no Supabase (Segurança Reativa)
   useEffect(() => {
@@ -59,75 +51,72 @@ const Admin = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // permite reenviar o mesmo arquivo
     if (!file) return;
 
     setLoading(true);
     setImportSuccess(false);
+    setErro(null);
     setFileInfo({ name: file.name, size: (file.size / 1024).toFixed(2) + ' KB' });
 
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const jsonData = XLSX.utils.sheet_to_json(ws);
-
-        if (jsonData.length > 0) {
-          setColunasDetectadas(Object.keys(jsonData[0] as object));
-        }
-
-        setPreviewData(jsonData);
-        setLoading(false);
+        const wb = XLSX.read(evt.target?.result, { type: 'array' });
+        setPreview(parseFechamento(wb, metaMB));
       } catch (error) {
         console.error('Erro ao processar arquivo:', error);
+        setPreview(null);
+        setErro(error instanceof Error ? error.message : 'Não foi possível ler o arquivo.');
+      } finally {
         setLoading(false);
       }
     };
-    reader.readAsBinaryString(file);
+    reader.onerror = () => {
+      setLoading(false);
+      setErro('Não foi possível ler o arquivo.');
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleImportar = async () => {
-    if (previewData.length === 0) return;
+    if (!preview) return;
+    setLoading(true);
+    setErro(null);
+    const resultado = await salvarFechamento({ ...preview, metaMB });
+    setLoading(false);
+    if (resultado.ok) {
+      setImportSuccess(true);
+      setTimeout(() => setImportSuccess(false), 4000);
+    } else {
+      setErro(`A planilha foi carregada nesta sessão, mas não foi salva na nuvem: ${resultado.erro}`);
+    }
+  };
 
-    // Converter os dados para OSRow[] (mantendo colunas originais ativas como Descrição)
-    const dadosOS: OSRow[] = previewData.map((row: any) => ({
-      ...row,
-      'Ordem de Serviço': row['Ordem de Serviço'] ?? row['Ordem de Servico'] ?? '',
-      'Relatado Em': row['Relatado Em'] ?? '',
-      'Grupo de Serviço': row['Grupo de Serviço'] ?? row['Grupo de Servico'] ?? '',
-      'Equipe': row['Equipe'] ?? '',
-      'Local': row['Local'] ?? '',
-      'Status': row['Status'] ?? '',
-      'Tipo de Serviço': row['Tipo de Serviço'] ?? row['Tipo de Servico'] ?? '',
-      'Terminar Não Após De': row['Terminar Não Após De'] ?? row['Terminar Nao Apos De'] ?? '',
-      'Ativo': row['Ativo'] ?? '',
-    }));
-
-    await setDadosFromUpload(dadosOS);
-    setImportSuccess(true);
-    setTimeout(() => setImportSuccess(false), 4000);
+  const limparPreview = () => {
+    setPreview(null);
+    setFileInfo(null);
+    setErro(null);
   };
 
   const handleLimparTudo = () => {
-    setPreviewData([]);
-    setFileInfo(null);
-    setColunasDetectadas([]);
+    limparPreview();
     limparDados();
   };
 
-  // Colunas encontradas vs esperadas
-
+  const linhas = preview?.uts ?? [];
+  const contagem = { negativa: 0, baixa: 0, emLinha: 0, alta: 0 };
+  linhas.forEach((ut) => { contagem[classificar(ut.real.pctMB, metaMB)] += 1; });
+  const semJustificativa = linhas.filter((ut) => !ut.justificativa).length;
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+    <div className="space-y-10 ">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div className="space-y-2">
           <h1 className="text-4xl font-extrabold tracking-tight">Importar Dados</h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2">
             <LayoutPanelTop className="w-4 h-4 text-primary" />
-            Carregue sua planilha de Ordens de Serviço
+            Carregue a planilha de fechamento de medição (Orç x Real)
           </p>
         </div>
 
@@ -151,23 +140,23 @@ const Admin = () => {
             Ver Dashboard
           </Link>
           <button
-            disabled={previewData.length === 0 || loading}
+            disabled={linhas.length === 0 || loading}
             onClick={handleImportar}
             className={cn(
-              'px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 text-sm',
-              previewData.length > 0
+              'px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-[0.98] text-sm',
+              linhas.length > 0
                 ? 'bg-primary text-primary-foreground hover:opacity-90'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
             <ClipboardList className="w-4 h-4" />
-            Importar {previewData.length > 0 ? `(${previewData.length} linhas)` : ''}
+            Publicar {linhas.length > 0 ? `(${linhas.length} UTs)` : ''}
           </button>
         </div>
       </header>
 
       {/* Status atual dos dados */}
-      {totalRegistros > 0 && (
+      {totalUTs > 0 && (
         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 flex items-center justify-between animate-in slide-in-from-top duration-500">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
@@ -175,7 +164,7 @@ const Admin = () => {
             </div>
             <div>
               <p className="text-sm font-bold">
-                {totalRegistros.toLocaleString('pt-BR')} ordens carregadas
+                {totalUTs} UTs publicadas no dashboard
               </p>
               <p className="text-xs text-muted-foreground">
                 Última atualização: {ultimaAtualizacao?.toLocaleDateString('pt-BR')}{' '}
@@ -196,22 +185,22 @@ const Admin = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Upload Section */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-card/40 backdrop-blur-xl p-8 rounded-[3rem] border-2 border-dashed border-border group hover:border-primary/50 transition-all cursor-pointer relative overflow-hidden text-center min-h-[350px] flex flex-col items-center justify-center">
+          <div className="bg-card p-8 rounded-2xl border-2 border-dashed border-input group hover:border-brand transition-all cursor-pointer relative overflow-hidden text-center min-h-[350px] flex flex-col items-center justify-center">
             <input
               type="file"
-              accept=".xlsx, .xls, .csv"
+              accept=".xlsx, .xls"
               onChange={handleFileUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
-            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 mx-auto group-hover:scale-110 group-hover:bg-primary transition-all duration-500 shadow-inner group-hover:shadow-primary/50">
+            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 mx-auto group-hover:bg-brand transition-colors">
               <Upload className="w-10 h-10 text-primary group-hover:text-primary-foreground transition-colors" />
             </div>
             <h3 className="text-2xl font-bold mb-3 tracking-tight">Carregar Planilha</h3>
             <p className="text-muted-foreground text-sm font-medium px-4 mb-2">
-              Arraste seu arquivo Excel ou CSV aqui ou clique para procurar
+              Arraste o arquivo Excel do fechamento aqui ou clique para procurar
             </p>
-            <p className="text-[10px] uppercase font-bold tracking-widest text-primary/60">
-              Formatos: .xlsx, .xls, .csv
+            <p className="text-xs font-medium text-muted-foreground">
+              Formatos: .xlsx, .xls
             </p>
           </div>
 
@@ -225,11 +214,8 @@ const Admin = () => {
                 <p className="text-xs font-semibold text-muted-foreground tracking-tight">{fileInfo.size}</p>
               </div>
               <button
-                onClick={() => {
-                  setPreviewData([]);
-                  setFileInfo(null);
-                  setColunasDetectadas([]);
-                }}
+                onClick={limparPreview}
+                aria-label="Remover arquivo"
                 className="hover:text-rose-500 transition-colors p-2 rounded-lg hover:bg-rose-500/10"
               >
                 <Trash2 className="w-5 h-5" />
@@ -237,28 +223,47 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Validação de colunas */}
-          {colunasDetectadas.length > 0 && (
-            <div className="bg-card/40 backdrop-blur-xl p-5 rounded-2xl border border-border animate-in slide-in-from-left duration-500">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                Colunas Detectadas
-              </h4>
-              <div className="space-y-1.5">
-                {COLUNAS_ESPERADAS.map((col) => {
-                  const found = colunasDetectadas.some(
-                    (d) => d.toLowerCase() === col.toLowerCase() ||
-                      d.replace(/[çãáéíóú]/gi, '').toLowerCase().includes(col.replace(/[çãáéíóú]/gi, '').toLowerCase().slice(0, 8))
-                  );
-                  return (
-                    <div key={col} className="flex items-center gap-2 text-xs font-medium">
-                      <div
-                        className={`w-2 h-2 rounded-full ${found ? 'bg-emerald-400' : 'bg-red-400'}`}
-                      />
-                      <span className={found ? 'text-foreground' : 'text-red-400'}>{col}</span>
-                    </div>
-                  );
-                })}
+          {/* Meta e resumo da classificação */}
+          <div className="bg-card p-5 rounded-2xl border border-border space-y-4">
+            <label className="block">
+              <span className="text-sm font-semibold">Meta de %MB</span>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={metaMB}
+                  onChange={(e) => setMetaMB(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-24 h-10 px-3 rounded-xl border border-input bg-background text-sm font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <span className="text-sm font-semibold text-muted-foreground">% · padrão {META_MB_PADRAO}%</span>
               </div>
+            </label>
+            {preview && (
+              <div className="space-y-2 text-sm animate-in slide-in-from-left duration-500">
+                <p className="text-xs text-muted-foreground">
+                  Aba lida: <strong className="text-foreground">{preview.aba}</strong>
+                  {preview.periodo ? ` · Real em ${preview.periodo}` : ''}
+                </p>
+                {(['baixa', 'negativa', 'emLinha', 'alta'] as const).map((c) => (
+                  <div key={c} className="flex items-center justify-between">
+                    <CategoriaBadge categoria={c} />
+                    <span className="font-bold tabular-nums">{contagem[c]}</span>
+                  </div>
+                ))}
+                {semJustificativa > 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    {semJustificativa} UT(s) sem justificativa na planilha.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {erro && (
+            <div role="alert" className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 font-medium p-4 rounded-2xl flex items-start gap-3 text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <span>{erro}</span>
             </div>
           )}
 
@@ -267,7 +272,7 @@ const Admin = () => {
               <CheckCircle2 className="w-6 h-6 shrink-0" />
               <div className="bg-emerald-500 w-1 h-6 rounded-full" />
               <span className="text-sm">
-                {previewData.length} ordens importadas com sucesso!
+                {linhas.length} UTs publicadas com sucesso!
               </span>
             </div>
           )}
@@ -275,49 +280,42 @@ const Admin = () => {
 
         {/* Preview Section */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-card/40 backdrop-blur-xl rounded-[3rem] border border-border shadow-2xl overflow-hidden min-h-[500px] flex flex-col group">
-            <div className="p-8 border-b border-border bg-gradient-to-r from-card to-accent/20 flex justify-between items-center">
+          <div className="bg-card rounded-2xl border border-border overflow-hidden min-h-[500px] flex flex-col group">
+            <div className="p-8 border-b border-border flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold tracking-tight">Preview dos Dados</h2>
                 <p className="text-sm text-muted-foreground font-medium">
-                  Visualização prévia das linhas detectadas
+                  UTs detectadas e a classificação pelo %MB Real
                 </p>
               </div>
               <div className="bg-primary/10 text-primary text-xs font-bold px-3 py-1.5 rounded-full border border-primary/20">
-                {previewData.length} Linhas Encontradas
+                {linhas.length} UTs encontradas
               </div>
             </div>
 
             <div className="flex-1 overflow-x-auto custom-scrollbar p-2">
-              {previewData.length > 0 ? (
+              {linhas.length > 0 ? (
                 <table className="w-full text-left border-separate border-spacing-0">
                   <thead>
                     <tr className="bg-accent/40">
-                      {Object.keys(previewData[0]).map((key) => (
-                        <th
-                          key={key}
-                          className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border whitespace-nowrap first:rounded-tl-2xl"
-                        >
-                          {key}
+                      {['#', 'Descrição da UT', '%MB Orç.', '%MB Real', 'Classificação', 'Justificativa'].map((h) => (
+                        <th key={h} className="p-4 text-xs font-semibold text-muted-foreground border-b border-border whitespace-nowrap first:rounded-tl-2xl">
+                          {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {previewData.slice(0, 15).map((row, i) => (
-                      <tr key={i} className="hover:bg-primary/5 transition-colors group">
-                        {Object.values(row).map((val: any, j) => (
-                          <td
-                            key={j}
-                            className="p-4 text-sm font-medium border-b border-border/30 whitespace-nowrap group-last:border-none"
-                          >
-                            {val instanceof Date
-                              ? val.toLocaleDateString('pt-BR')
-                              : val == null
-                                ? '—'
-                                : String(val)}
-                          </td>
-                        ))}
+                    {linhas.map((ut) => (
+                      <tr key={`${ut.pos}|${ut.descricao}`} className="hover:bg-primary/5 transition-colors">
+                        <td className="p-4 text-sm text-muted-foreground tabular-nums border-b border-border/30">{ut.pos}</td>
+                        <td className="p-4 text-sm font-medium border-b border-border/30 min-w-[260px]">{ut.descricao}</td>
+                        <td className="p-4 text-sm tabular-nums border-b border-border/30">{fmtPct(ut.orcamento.pctMB)}</td>
+                        <td className="p-4 text-sm font-bold tabular-nums border-b border-border/30">{fmtPct(ut.real.pctMB)}</td>
+                        <td className="p-4 border-b border-border/30"><CategoriaBadge categoria={classificar(ut.real.pctMB, metaMB)} /></td>
+                        <td className="p-4 text-sm text-muted-foreground border-b border-border/30 max-w-[320px] truncate" title={ut.justificativa}>
+                          {ut.justificativa || '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -327,19 +325,12 @@ const Admin = () => {
                   <Database className="w-24 h-24 mb-6 text-muted-foreground animate-pulse" />
                   <h3 className="text-lg font-bold mb-1">Nenhum dado selecionado</h3>
                   <p className="text-sm max-w-xs mx-auto">
-                    Selecione uma planilha Excel para pré-visualizar o conteúdo antes da importação.
+                    Selecione a planilha de fechamento para conferir as UTs antes de publicar.
                   </p>
                 </div>
               )}
             </div>
 
-            {previewData.length > 15 && (
-              <div className="p-6 bg-accent/20 border-t border-border mt-auto">
-                <p className="text-xs font-bold text-center text-muted-foreground tracking-widest uppercase">
-                  Mostrando primeiras 15 de {previewData.length} linhas
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
