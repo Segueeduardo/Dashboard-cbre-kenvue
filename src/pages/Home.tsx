@@ -102,7 +102,7 @@ const Home = () => {
     <div className="space-y-6 max-w-[1500px] mx-auto">
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
         <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight uppercase">
             {mes ? `Fechamento de ${mes}` : 'Fechamento de medição'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">
