@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ChevronsUpDown, MessageSquareText, CalendarClock, AlertOctagon } from 'lucide-react';
+import {
+  ChevronDown, ChevronUp, ChevronsUpDown, MessageSquareText, CalendarClock, AlertOctagon, Pencil, Loader2, Check,
+} from 'lucide-react';
+import { useFechamento } from '../../context/FechamentoContext';
 import type { Categoria, UT, ValoresUT } from '../../types/fechamento.types';
 import { TOLERANCIA_PP } from '../../types/fechamento.types';
 import { CATEGORIA_COR } from './categoria';
@@ -69,6 +72,115 @@ const ListaPlanos: React.FC<{ titulo: string; itens: string[]; icon: React.React
   </div>
 );
 
+const LIMITE_JUSTIFICATIVA = 4000;
+
+/** Justificativa da UT, com edição no próprio cartão */
+const Justificativa: React.FC<{ ut: UT }> = ({ ut }) => {
+  const { mesSelecionado, salvarJustificativa } = useFechamento();
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(ut.justificativa);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvo, setSalvo] = useState(false);
+
+  const abrir = () => {
+    setTexto(ut.justificativa);
+    setErro(null);
+    setSalvo(false);
+    setEditando(true);
+  };
+
+  const salvar = async () => {
+    if (!mesSelecionado) return;
+    setSalvando(true);
+    setErro(null);
+    const r = await salvarJustificativa(mesSelecionado, ut.descricao, texto);
+    setSalvando(false);
+    if (r.ok) {
+      setEditando(false);
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 4000);
+    } else {
+      setErro(`Não foi possível salvar: ${r.erro}`);
+    }
+  };
+
+  const mudou = texto.trim() !== ut.justificativa;
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <MessageSquareText className="w-3.5 h-3.5" />
+          Justificativa (fatos relevantes no real)
+        </p>
+        {!editando && mesSelecionado && (
+          <span className="flex items-center gap-3">
+            {salvo && (
+              <span role="status" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" />
+                Salvo
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={abrir}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors flex items-center gap-1.5"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Editar
+            </button>
+          </span>
+        )}
+      </div>
+
+      {editando ? (
+        <div className="space-y-3">
+          <textarea
+            autoFocus
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            maxLength={LIMITE_JUSTIFICATIVA}
+            rows={Math.min(12, Math.max(4, Math.ceil(texto.length / 90) + 1))}
+            aria-label={`Justificativa de ${ut.nome}`}
+            placeholder="Descreva os fatos relevantes no real desta UT"
+            className="w-full rounded-xl border border-input bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+          />
+          {erro && (
+            <p role="alert" className="text-xs font-medium text-red-600 dark:text-red-400">{erro}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={salvando || !mudou}
+              className="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center gap-2"
+            >
+              {salvando && <Loader2 className="w-4 h-4 animate-spin" />}
+              Salvar
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditando(false)}
+              disabled={salvando}
+              className="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent transition-colors"
+            >
+              Cancelar
+            </button>
+            <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+              {texto.length}/{LIMITE_JUSTIFICATIVA}
+            </span>
+          </div>
+        </div>
+      ) : ut.justificativa ? (
+        <p className="text-sm leading-relaxed whitespace-pre-line max-w-[75ch]">{ut.justificativa}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Sem justificativa informada.</p>
+      )}
+    </>
+  );
+};
+
 const DetalheUT: React.FC<{ ut: UT; categoria: Categoria; metaMB: number }> = ({ ut, categoria, metaMB }) => (
   <div className="p-5 md:p-6 bg-muted border-b border-border space-y-5">
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -78,15 +190,7 @@ const DetalheUT: React.FC<{ ut: UT; categoria: Categoria; metaMB: number }> = ({
     </div>
 
     <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-        <MessageSquareText className="w-3.5 h-3.5" />
-        Justificativa (fatos relevantes no real)
-      </p>
-      {ut.justificativa ? (
-        <p className="text-sm leading-relaxed whitespace-pre-line max-w-[75ch]">{ut.justificativa}</p>
-      ) : (
-        <p className="text-sm text-muted-foreground">Sem justificativa informada na planilha.</p>
-      )}
+      <Justificativa ut={ut} />
       <p className="text-xs text-muted-foreground mt-3">
         Classificada como <strong className={CATEGORIA_COR[categoria].texto}>{CATEGORIA_LABEL[categoria]}</strong>: %MB Real de{' '}
         {fmtPct(ut.real.pctMB)} contra meta de {fmtPct(metaMB)} (em linha de {fmtPct(metaMB - TOLERANCIA_PP)} a {fmtPct(metaMB + TOLERANCIA_PP)}).
