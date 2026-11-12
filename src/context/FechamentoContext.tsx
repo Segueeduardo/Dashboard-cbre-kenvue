@@ -28,6 +28,8 @@ interface FechamentoContextType {
   totalUTs: number;
   salvarFechamento: (f: Fechamento, mes: string) => Promise<ResultadoSalvar>;
   removerMes: (mes: string) => Promise<ResultadoSalvar>;
+  /** Troca a justificativa de uma UT do mês; não exige login */
+  salvarJustificativa: (mes: string, descricao: string, texto: string) => Promise<ResultadoSalvar>;
   limparDados: () => Promise<void>;
 }
 
@@ -114,6 +116,51 @@ export const FechamentoProvider: React.FC<{ children: ReactNode }> = ({ children
     [aplicar, gravar]
   );
 
+  // Passa pela função atualizar_justificativa do banco (migração 20261112000000),
+  // que altera só esse texto; por isso funciona para visitantes sem login.
+  const salvarJustificativa = useCallback(
+    async (mes: string, descricao: string, texto: string): Promise<ResultadoSalvar> => {
+      const justificativa = texto.trim();
+      try {
+        const { data, error } = await supabase.rpc('atualizar_justificativa', {
+          p_mes: mes,
+          p_descricao: descricao,
+          p_texto: justificativa,
+        });
+        if (error) {
+          console.error('Erro ao salvar justificativa:', error);
+          const semFuncao = error.code === 'PGRST202' || error.code === '42883';
+          return {
+            ok: false,
+            erro: semFuncao
+              ? 'A edição ainda não foi habilitada no banco de dados.'
+              : error.message,
+          };
+        }
+        const atualizadoEm = typeof data === 'string' ? data : new Date().toISOString();
+        aplicar(
+          mesesRef.current.map((m) =>
+            m.mes !== mes
+              ? m
+              : {
+                  ...m,
+                  atualizadoEm,
+                  fechamento: {
+                    ...m.fechamento,
+                    uts: m.fechamento.uts.map((u) => (u.descricao === descricao ? { ...u, justificativa } : u)),
+                  },
+                }
+          )
+        );
+        return { ok: true };
+      } catch (err) {
+        console.error('Falha de rede ao salvar justificativa', err);
+        return { ok: false, erro: 'Falha de rede ao salvar a justificativa.' };
+      }
+    },
+    [aplicar]
+  );
+
   const limparDados = useCallback(async () => {
     aplicar([]);
     setMesSelecionado(null);
@@ -138,6 +185,7 @@ export const FechamentoProvider: React.FC<{ children: ReactNode }> = ({ children
         totalUTs: atual?.fechamento.uts.length ?? 0,
         salvarFechamento,
         removerMes,
+        salvarJustificativa,
         limparDados,
       }}
     >
