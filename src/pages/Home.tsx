@@ -100,19 +100,32 @@ const Home = () => {
 
   return (
     <div className="space-y-6 max-w-[1500px] mx-auto">
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight uppercase">
-            {mes ? `Fechamento de ${mes}` : 'Fechamento de medição'}
+      <header className="space-y-3">
+        {/* Faixa do título: laranja Manserv com letra branca, nos dois temas */}
+        <div className="relative overflow-hidden rounded-2xl bg-brand text-white px-6 py-6 md:px-9 md:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          {/* Traços inclinados, eco do símbolo da Manserv */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-stretch gap-5 pr-10">
+            <span className="w-10 -skew-x-[28deg] bg-white/[0.07]" />
+            <span className="w-10 -skew-x-[28deg] bg-white/[0.11]" />
+            <span className="w-10 -skew-x-[28deg] bg-white/[0.16]" />
+          </div>
+
+          <h1 className="relative font-display text-3xl md:text-[2.75rem] md:leading-[1.1] font-medium tracking-tight">
+            {mes ? (
+              <>
+                Fechamento de <span className="font-extrabold whitespace-nowrap">{mes}</span>
+              </>
+            ) : (
+              'Fechamento de medição'
+            )}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Orçado x real{fechamento.periodo ? ` em ${fechamento.periodo}` : ''}. Meta de %MB de {curto(metaMB)}; de{' '}
-            {curto(metaMB - TOLERANCIA_PP)} a {curto(metaMB + TOLERANCIA_PP)} a UT está em linha.
-          </p>
-        </div>
-        <div className="flex flex-col sm:items-end gap-2">
+
           {meses.length > 1 && (
-            <div role="group" aria-label="Mês do fechamento" className="inline-flex rounded-xl border border-border bg-card p-1">
+            <div
+              role="group"
+              aria-label="Mês do fechamento"
+              className="relative inline-flex self-start sm:self-auto shrink-0 rounded-full bg-black/15 p-1 backdrop-blur-sm"
+            >
               {[...meses].reverse().map((m) => (
                 <button
                   key={m.mes}
@@ -121,10 +134,10 @@ const Home = () => {
                   aria-pressed={m.mes === mesSelecionado}
                   title={rotuloMes(m.mes)}
                   className={
-                    'px-3.5 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ' +
+                    'px-4 py-1.5 rounded-full text-sm font-bold capitalize transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ' +
                     (m.mes === mesSelecionado
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent')
+                      ? 'bg-white text-black shadow-sm'
+                      : 'text-white hover:bg-white/15')
                   }
                 >
                   {rotuloMesCurto(m.mes)}
@@ -132,6 +145,13 @@ const Home = () => {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
+          <p className="text-sm text-muted-foreground">
+            Orçado x real{fechamento.periodo ? ` em ${fechamento.periodo}` : ''}. Meta de %MB de {curto(metaMB)}; de{' '}
+            {curto(metaMB - TOLERANCIA_PP)} a {curto(metaMB + TOLERANCIA_PP)} a UT está em linha.
+          </p>
           {ultimaAtualizacao && (
             <p className="text-xs text-muted-foreground whitespace-nowrap">
               Atualizado em {ultimaAtualizacao.toLocaleDateString('pt-BR')} às{' '}
