@@ -52,6 +52,8 @@ export default {
   		},
   		fontFamily: {
   			sans: ['Figtree', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'Arial', 'sans-serif'],
+  			// Títulos de destaque: geométrica próxima à assinatura "manserv | Digital"
+  			display: ['"Red Hat Display"', 'Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
