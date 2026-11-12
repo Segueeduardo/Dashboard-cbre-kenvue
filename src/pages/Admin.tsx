@@ -8,16 +8,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useFechamento } from '../context/FechamentoContext';
 import type { Fechamento } from '../types/fechamento.types';
-import { META_MB_PADRAO } from '../types/fechamento.types';
-import { classificar, fmtPct, parseFechamento } from '../lib/fechamento';
+import { MAX_MESES, META_MB_PADRAO } from '../types/fechamento.types';
+import {
+  adicionarMes, classificar, detectarMes, ehMesValido, fmtPct, mesAnterior, parseFechamento, rotuloMes,
+} from '../lib/fechamento';
 import { CategoriaBadge } from '../components/dashboard/UTTable';
 import { supabase } from '../lib/supabase';
 
 const Admin = () => {
-  const { salvarFechamento, limparDados, ultimaAtualizacao, totalUTs } = useFechamento();
+  const { salvarFechamento, limparDados, removerMes, meses } = useFechamento();
   const navigate = useNavigate();
   const [preview, setPreview] = useState<Fechamento | null>(null);
   const [metaMB, setMetaMB] = useState<number>(META_MB_PADRAO);
+  // Mês de referência da planilha; por padrão, o mês anterior completo
+  const [mes, setMes] = useState<string>(mesAnterior());
+  const [mesDetectado, setMesDetectado] = useState<string | null>(null);
+  const [publicado, setPublicado] = useState<string>('');
   const [fileInfo, setFileInfo] = useState<{ name: string; size: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -63,7 +69,11 @@ const Admin = () => {
     reader.onload = (evt) => {
       try {
         const wb = XLSX.read(evt.target?.result, { type: 'array' });
-        setPreview(parseFechamento(wb, metaMB));
+        const lido = parseFechamento(wb, metaMB);
+        const detectado = detectarMes(lido.aba, lido.periodo);
+        setPreview(lido);
+        setMesDetectado(detectado);
+        if (detectado) setMes(detectado);
       } catch (error) {
         console.error('Erro ao processar arquivo:', error);
         setPreview(null);
@@ -81,13 +91,27 @@ const Admin = () => {
 
   const handleImportar = async () => {
     if (!preview) return;
+    if (!ehMesValido(mes)) {
+      setErro('Escolha o mês de referência da planilha antes de publicar.');
+      return;
+    }
+    if (foraDaJanela) {
+      setErro(
+        `${rotuloMes(mes)} é anterior aos ${MAX_MESES} meses vigentes e não entraria no dashboard. Remova um mês mais recente ou escolha outro mês.`
+      );
+      return;
+    }
     setLoading(true);
     setErro(null);
-    const resultado = await salvarFechamento({ ...preview, metaMB });
+    const resultado = await salvarFechamento({ ...preview, metaMB }, mes);
     setLoading(false);
     if (resultado.ok) {
+      const saiu = resultado.removidos?.length
+        ? ` ${resultado.removidos.map(rotuloMes).join(', ')} saiu do dashboard.`
+        : '';
+      setPublicado(`${rotuloMes(mes)} publicado com ${preview.uts.length} UTs.${saiu}`);
       setImportSuccess(true);
-      setTimeout(() => setImportSuccess(false), 4000);
+      setTimeout(() => setImportSuccess(false), 6000);
     } else {
       setErro(`A planilha foi carregada nesta sessão, mas não foi salva na nuvem: ${resultado.erro}`);
     }
@@ -97,9 +121,17 @@ const Admin = () => {
     setPreview(null);
     setFileInfo(null);
     setErro(null);
+    setMesDetectado(null);
+  };
+
+  const handleRemoverMes = async (m: string) => {
+    if (!window.confirm(`Remover ${rotuloMes(m)} do dashboard?`)) return;
+    const resultado = await removerMes(m);
+    if (!resultado.ok) setErro(`Não foi possível remover o mês na nuvem: ${resultado.erro}`);
   };
 
   const handleLimparTudo = () => {
+    if (!window.confirm('Remover todos os meses publicados do dashboard?')) return;
     limparPreview();
     limparDados();
   };
@@ -108,6 +140,14 @@ const Admin = () => {
   const contagem = { negativa: 0, baixa: 0, emLinha: 0, alta: 0 };
   linhas.forEach((ut) => { contagem[classificar(ut.real.pctMB, metaMB)] += 1; });
   const semJustificativa = linhas.filter((ut) => !ut.justificativa).length;
+
+  // O que acontece com os meses vigentes se esta planilha for publicada em `mes`
+  const jaPublicado = meses.some((m) => m.mes === mes);
+  const simulacao = preview && ehMesValido(mes)
+    ? adicionarMes(meses, { mes, atualizadoEm: '', fechamento: preview })
+    : null;
+  const foraDaJanela = !!simulacao && simulacao.removidos.includes(mes);
+  const vaiSair = simulacao ? simulacao.removidos.filter((m) => m !== mes) : [];
 
   return (
     <div className="space-y-10 ">
@@ -155,30 +195,50 @@ const Admin = () => {
         </div>
       </header>
 
-      {/* Status atual dos dados */}
-      {totalUTs > 0 && (
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 flex items-center justify-between animate-in slide-in-from-top duration-500">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <Database className="w-5 h-5 text-emerald-400" />
+      {/* Meses vigentes no dashboard */}
+      {meses.length > 0 && (
+        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 space-y-4 animate-in slide-in-from-top duration-500">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <Database className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold">
+                  {meses.length} de {MAX_MESES} meses vigentes no dashboard
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Ao publicar um mês além do limite, o mais antigo sai automaticamente.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold">
-                {totalUTs} UTs publicadas no dashboard
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Última atualização: {ultimaAtualizacao?.toLocaleDateString('pt-BR')}{' '}
-                {ultimaAtualizacao?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
+            <button
+              onClick={handleLimparTudo}
+              className="text-xs font-semibold text-muted-foreground hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10 flex items-center gap-1.5 shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar tudo
+            </button>
           </div>
-          <button
-            onClick={handleLimparTudo}
-            className="text-xs font-semibold text-muted-foreground hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10 flex items-center gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Limpar dados
-          </button>
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {meses.map((m) => (
+              <li key={m.mes} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold capitalize truncate">{rotuloMes(m.mes)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {m.fechamento.uts.length} UTs · {new Date(m.atualizadoEm).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRemoverMes(m.mes)}
+                  aria-label={`Remover ${rotuloMes(m.mes)}`}
+                  className="text-muted-foreground hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-500/10"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -223,8 +283,37 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Meta e resumo da classificação */}
+          {/* Mês, meta e resumo da classificação */}
           <div className="bg-card p-5 rounded-2xl border border-border space-y-4">
+            <label className="block">
+              <span className="text-sm font-semibold">Mês da planilha</span>
+              <input
+                type="month"
+                value={mes}
+                onChange={(e) => setMes(e.target.value)}
+                className="mt-2 block w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="mt-2 block text-xs text-muted-foreground">
+                {mesDetectado
+                  ? `Detectado pela aba da planilha: ${rotuloMes(mesDetectado)}.`
+                  : 'Padrão: o mês anterior completo.'}
+              </span>
+            </label>
+            {preview && jaPublicado && !foraDaJanela && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                {rotuloMes(mes)} já está publicado; esta planilha vai substituí-lo.
+              </p>
+            )}
+            {vaiSair.length > 0 && !foraDaJanela && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                Ao publicar, {vaiSair.map(rotuloMes).join(', ')} sai do dashboard (ficam os {MAX_MESES} meses mais recentes).
+              </p>
+            )}
+            {foraDaJanela && (
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                {rotuloMes(mes)} é anterior aos {MAX_MESES} meses vigentes e não entraria no dashboard.
+              </p>
+            )}
             <label className="block">
               <span className="text-sm font-semibold">Meta de %MB</span>
               <div className="mt-2 flex items-center gap-2">
@@ -272,7 +361,7 @@ const Admin = () => {
               <CheckCircle2 className="w-6 h-6 shrink-0" />
               <div className="bg-emerald-500 w-1 h-6 rounded-full" />
               <span className="text-sm">
-                {linhas.length} UTs publicadas com sucesso!
+                {publicado}
               </span>
             </div>
           )}

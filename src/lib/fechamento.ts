@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
 import type {
-  BlocoValores, Categoria, Fechamento, UT, ValoresUT,
+  BlocoValores, Categoria, Fechamento, HistoricoFechamentos, MesPublicado, UT, ValoresUT,
 } from '../types/fechamento.types';
-import { META_MB_PADRAO, TOLERANCIA_PP } from '../types/fechamento.types';
+import { MAX_MESES, META_MB_PADRAO, TOLERANCIA_PP } from '../types/fechamento.types';
 
 /* ────────── Classificação ────────── */
 
@@ -159,15 +159,23 @@ function lerAba(nome: string, ws: XLSX.WorkSheet): AbaLida | null {
   return { nome, periodo, total, uts };
 }
 
+/** Aba do fechamento: "OUTUBRO (Orç x Real)" */
+const ehAbaPrincipal = (nome: string) => /orc\s*x\s*real/.test(norm(nome));
+
 /**
- * Lê o workbook do fechamento. A aba principal é a que tem mais UTs
- * (ex.: "SETEMBRO (Orç x Real)"); as demais abas só complementam
- * comentários que estiverem vazios na principal.
+ * Lê o workbook do fechamento usando somente a aba principal
+ * (ex.: "OUTUBRO (Orç x Real)"). As abas de categoria (Negativas,
+ * Baixa/Alta performance) são ignoradas: podem estar com dados de
+ * outro mês. Sem aba com esse nome, vale a que tiver mais UTs.
  */
 export function parseFechamento(wb: XLSX.WorkBook, metaMB: number = META_MB_PADRAO): Fechamento {
-  const abas = wb.SheetNames
-    .map((n) => lerAba(n, wb.Sheets[n]))
-    .filter((a): a is AbaLida => !!a && a.uts.length > 0);
+  const ler = (nomes: string[]) =>
+    nomes
+      .map((n) => lerAba(n, wb.Sheets[n]))
+      .filter((a): a is AbaLida => !!a && a.uts.length > 0);
+
+  let abas = ler(wb.SheetNames.filter(ehAbaPrincipal));
+  if (abas.length === 0) abas = ler(wb.SheetNames);
 
   if (abas.length === 0) {
     throw new Error(
@@ -176,23 +184,7 @@ export function parseFechamento(wb: XLSX.WorkBook, metaMB: number = META_MB_PADR
   }
 
   const principal = abas.reduce((a, b) => (b.uts.length > a.uts.length ? b : a));
-
-  const complemento = new Map<string, UT>();
-  for (const aba of abas) {
-    if (aba === principal) continue;
-    for (const ut of aba.uts) if (ut.codigo && !complemento.has(ut.codigo)) complemento.set(ut.codigo, ut);
-  }
-
-  const uts = principal.uts.map((ut) => {
-    const extra = complemento.get(ut.codigo);
-    if (!extra) return ut;
-    return {
-      ...ut,
-      justificativa: ut.justificativa || extra.justificativa,
-      planosAVencer: ut.planosAVencer.length ? ut.planosAVencer : extra.planosAVencer,
-      planosVencidos: ut.planosVencidos.length ? ut.planosVencidos : extra.planosVencidos,
-    };
-  });
+  const uts = principal.uts;
 
   return {
     tipo: 'fechamento-medicao',
@@ -209,6 +201,107 @@ export function isFechamento(p: unknown): p is Fechamento {
   const f = p as Fechamento | null;
   return !!f && typeof f === 'object' && f.tipo === 'fechamento-medicao' && Array.isArray(f.uts);
 }
+
+/* ────────── Meses vigentes ────────── */
+
+const MESES = [
+  'janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+const MESES_ROTULO = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
+const chaveMes = (ano: number, mes: number) => `${ano}-${String(mes).padStart(2, '0')}`;
+
+/** Mês anterior completo — a medição é feita até o dia 10/11 do mês seguinte */
+export function mesAnterior(hoje: Date = new Date()): string {
+  const d = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+  return chaveMes(d.getFullYear(), d.getMonth() + 1);
+}
+
+/**
+ * Descobre o mês da planilha pelo nome da aba ("OUTUBRO (Orç x Real)")
+ * ou pelo período do cabeçalho ("Out-Out/26"). Devolve "AAAA-MM" ou null.
+ */
+export function detectarMes(aba: string, periodo: string, hoje: Date = new Date()): string | null {
+  const a = norm(aba);
+  const p = norm(periodo);
+  let mes = MESES.findIndex((m) => a.includes(m)) + 1;
+  if (!mes) {
+    // "set-out/26" → vale o último mês do intervalo
+    const abrev = p.split('/')[0].split('-').pop()?.trim().slice(0, 3) ?? '';
+    mes = abrev.length === 3 ? MESES.findIndex((m) => m.startsWith(abrev)) + 1 : 0;
+  }
+  if (!mes) return null;
+
+  const anoTxt = p.match(/\/(\d{2,4})\s*$/)?.[1];
+  let ano: number;
+  if (anoTxt) ano = anoTxt.length === 2 ? 2000 + Number(anoTxt) : Number(anoTxt);
+  else {
+    // Sem ano no cabeçalho: o mês mais recente que já terminou
+    ano = hoje.getFullYear();
+    if (mes > hoje.getMonth() + 1) ano -= 1;
+  }
+  return chaveMes(ano, mes);
+}
+
+/** "2026-10" → "outubro de 2026" */
+export function rotuloMes(mes: string): string {
+  const [ano, m] = mes.split('-').map(Number);
+  const nome = MESES_ROTULO[m - 1];
+  return nome && ano ? `${nome} de ${ano}` : mes;
+}
+
+/** "2026-10" → "out/26" */
+export function rotuloMesCurto(mes: string): string {
+  const [ano, m] = mes.split('-').map(Number);
+  const nome = MESES_ROTULO[m - 1];
+  return nome && ano ? `${nome.slice(0, 3)}/${String(ano).slice(-2)}` : mes;
+}
+
+export const ehMesValido = (mes: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(mes);
+
+/**
+ * Converte o payload do Supabase na lista de meses (mais recente primeiro).
+ * Aceita o formato novo (histórico) e o antigo (um Fechamento solto).
+ */
+export function lerHistorico(payload: unknown, atualizadoEm: string): MesPublicado[] {
+  const h = payload as HistoricoFechamentos | null;
+  if (h && typeof h === 'object' && h.tipo === 'fechamento-historico' && Array.isArray(h.meses)) {
+    return ordenarMeses(h.meses.filter((m) => m && ehMesValido(m.mes) && isFechamento(m.fechamento)));
+  }
+  if (isFechamento(payload)) {
+    const data = new Date(atualizadoEm);
+    const mes = detectarMes(payload.aba, payload.periodo, data) ?? mesAnterior(data);
+    return [{ mes, atualizadoEm, fechamento: payload }];
+  }
+  return [];
+}
+
+const ordenarMeses = (meses: MesPublicado[]) => [...meses].sort((a, b) => b.mes.localeCompare(a.mes));
+
+/**
+ * Inclui (ou substitui) um mês e mantém só os MAX_MESES mais recentes.
+ * `removidos` traz os meses que saíram por causa do limite.
+ */
+export function adicionarMes(
+  meses: MesPublicado[],
+  novo: MesPublicado
+): { meses: MesPublicado[]; removidos: string[] } {
+  const todos = ordenarMeses([...meses.filter((m) => m.mes !== novo.mes), novo]);
+  return {
+    meses: todos.slice(0, MAX_MESES),
+    removidos: todos.slice(MAX_MESES).map((m) => m.mes),
+  };
+}
+
+export const montarHistorico = (meses: MesPublicado[]): HistoricoFechamentos => ({
+  tipo: 'fechamento-historico',
+  versao: 2,
+  meses,
+});
 
 /** Totais: usa a linha "* Total" da planilha ou soma as UTs */
 export function totaisDoFechamento(f: Fechamento): BlocoValores {
