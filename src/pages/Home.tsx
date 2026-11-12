@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useFechamento } from '../context/FechamentoContext';
 import type { FiltroCategoria, ValoresUT } from '../types/fechamento.types';
 import { TOLERANCIA_PP } from '../types/fechamento.types';
-import { classificar, fmtMoeda, fmtPct, fmtPP, totaisDoFechamento } from '../lib/fechamento';
+import { classificar, fmtMoeda, fmtPct, fmtPP, rotuloMes, rotuloMesCurto, totaisDoFechamento } from '../lib/fechamento';
 import KpiCardsGrid, { type ResumoCategoria } from '../components/dashboard/KpiCards';
 import UTTable from '../components/dashboard/UTTable';
 import RankingMeta from '../components/dashboard/RankingMeta';
@@ -31,7 +31,7 @@ const Indicador = ({ titulo, real, orcado, dif }: { titulo: string; real: string
 );
 
 const Home = () => {
-  const { fechamento, ultimaAtualizacao, carregando } = useFechamento();
+  const { fechamento, ultimaAtualizacao, carregando, meses, mesSelecionado, selecionarMes } = useFechamento();
   const [filtro, setFiltro] = useState<FiltroCategoria>('todas');
   const [busca, setBusca] = useState('');
 
@@ -96,7 +96,7 @@ const Home = () => {
   const difMoeda = (v: ValoresUT, campo: 'recLiq' | 'mb') => `${v[campo] > 0 ? '+' : ''}${fmtMoeda(v[campo])}`;
 
   const curto = (n: number) => fmtPct(n).replace(',0%', '%');
-  const mes = fechamento.aba.split('(')[0].trim().toLowerCase();
+  const mes = mesSelecionado ? rotuloMes(mesSelecionado) : fechamento.aba.split('(')[0].trim().toLowerCase();
 
   return (
     <div className="space-y-6 max-w-[1500px] mx-auto">
@@ -110,12 +110,35 @@ const Home = () => {
             {curto(metaMB - TOLERANCIA_PP)} a {curto(metaMB + TOLERANCIA_PP)} a UT está em linha.
           </p>
         </div>
-        {ultimaAtualizacao && (
-          <p className="text-xs text-muted-foreground whitespace-nowrap">
-            Atualizado em {ultimaAtualizacao.toLocaleDateString('pt-BR')} às{' '}
-            {ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          </p>
-        )}
+        <div className="flex flex-col sm:items-end gap-2">
+          {meses.length > 1 && (
+            <div role="group" aria-label="Mês do fechamento" className="inline-flex rounded-xl border border-border bg-card p-1">
+              {[...meses].reverse().map((m) => (
+                <button
+                  key={m.mes}
+                  type="button"
+                  onClick={() => selecionarMes(m.mes)}
+                  aria-pressed={m.mes === mesSelecionado}
+                  title={rotuloMes(m.mes)}
+                  className={
+                    'px-3.5 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ' +
+                    (m.mes === mesSelecionado
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent')
+                  }
+                >
+                  {rotuloMesCurto(m.mes)}
+                </button>
+              ))}
+            </div>
+          )}
+          {ultimaAtualizacao && (
+            <p className="text-xs text-muted-foreground whitespace-nowrap">
+              Atualizado em {ultimaAtualizacao.toLocaleDateString('pt-BR')} às{' '}
+              {ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
       </header>
 
       <section className="bg-ink text-ink-foreground rounded-2xl p-6 md:p-8 space-y-6" aria-label="Resultado do período">

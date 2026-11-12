@@ -34,7 +34,7 @@ export interface UT extends BlocoValores {
 export type Categoria = 'negativa' | 'baixa' | 'emLinha' | 'alta';
 export type FiltroCategoria = 'todas' | Categoria;
 
-/** Payload salvo no Supabase (fechamento_medicao.payload) */
+/** Fechamento de um mês (uma planilha importada) */
 export interface Fechamento {
   tipo: 'fechamento-medicao';
   versao: 1;
@@ -48,6 +48,29 @@ export interface Fechamento {
   total: BlocoValores | null;
   uts: UT[];
 }
+
+/** Um mês publicado no dashboard */
+export interface MesPublicado {
+  /** Mês de referência no formato AAAA-MM (ex.: "2026-10") */
+  mes: string;
+  /** Quando a planilha desse mês foi publicada (ISO) */
+  atualizadoEm: string;
+  fechamento: Fechamento;
+}
+
+/**
+ * Payload salvo no Supabase a partir da versão 2: os meses vigentes,
+ * do mais recente para o mais antigo. O formato antigo (um único
+ * Fechamento solto) continua sendo lido e vira o primeiro mês.
+ */
+export interface HistoricoFechamentos {
+  tipo: 'fechamento-historico';
+  versao: 2;
+  meses: MesPublicado[];
+}
+
+/** Quantos meses ficam no dashboard; ao publicar um a mais, o mais antigo sai */
+export const MAX_MESES = 3;
 
 export const META_MB_PADRAO = 12;
 /** Faixa em torno da meta (em p.p.) considerada "em linha com o orçado": 12% ± 1 → 11% a 13% */
