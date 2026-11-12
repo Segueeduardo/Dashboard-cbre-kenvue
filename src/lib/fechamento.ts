@@ -68,10 +68,29 @@ function separarPlanos(v: unknown): string[] {
     .filter((s) => s && !/^\(\s*-\s*\)$/.test(s));
 }
 
+/**
+ * Nomes de exibição fixos por código de UT: valem mesmo que a planilha
+ * traga outro texto. A `descricao` original não muda (é a chave da UT).
+ */
+const NOMES_FIXOS: Record<string, string> = {
+  '9.03.0384.031': 'JOHNSON & JOHNSON – LIMPEZA - MF-SJC',
+};
+
 function separarCodigo(descricao: string): { codigo: string; nome: string } {
   const m = descricao.match(/^\s*(\d+(?:\.\d+)+)\s*-\s*(.+)$/s);
-  return m ? { codigo: m[1], nome: m[2].trim() } : { codigo: '', nome: descricao.trim() };
+  if (!m) return { codigo: '', nome: descricao.trim() };
+  return { codigo: m[1], nome: NOMES_FIXOS[m[1]] ?? m[2].trim() };
 }
+
+/** Aplica os nomes fixos a meses já publicados (salvos com o nome da planilha) */
+const comNomesFixos = (meses: MesPublicado[]): MesPublicado[] =>
+  meses.map((m) => ({
+    ...m,
+    fechamento: {
+      ...m.fechamento,
+      uts: m.fechamento.uts.map((u) => (NOMES_FIXOS[u.codigo] ? { ...u, nome: NOMES_FIXOS[u.codigo] } : u)),
+    },
+  }));
 
 interface AbaLida {
   nome: string;
@@ -270,12 +289,12 @@ export const ehMesValido = (mes: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(mes);
 export function lerHistorico(payload: unknown, atualizadoEm: string): MesPublicado[] {
   const h = payload as HistoricoFechamentos | null;
   if (h && typeof h === 'object' && h.tipo === 'fechamento-historico' && Array.isArray(h.meses)) {
-    return ordenarMeses(h.meses.filter((m) => m && ehMesValido(m.mes) && isFechamento(m.fechamento)));
+    return comNomesFixos(ordenarMeses(h.meses.filter((m) => m && ehMesValido(m.mes) && isFechamento(m.fechamento))));
   }
   if (isFechamento(payload)) {
     const data = new Date(atualizadoEm);
     const mes = detectarMes(payload.aba, payload.periodo, data) ?? mesAnterior(data);
-    return [{ mes, atualizadoEm, fechamento: payload }];
+    return comNomesFixos([{ mes, atualizadoEm, fechamento: payload }]);
   }
   return [];
 }
