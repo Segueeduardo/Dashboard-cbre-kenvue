@@ -316,6 +316,24 @@ export function adicionarMes(
   };
 }
 
+/**
+ * Reimportação de um mês já publicado: os valores vêm da planilha nova, mas a
+ * justificativa de cada UT que já existia continua sendo a salva no sistema
+ * (a da primeira importação ou a editada no dashboard). Só UTs que ainda não
+ * existiam no mês recebem a justificativa da planilha.
+ */
+export function preservarJustificativas(novo: Fechamento, salvo: Fechamento | undefined): Fechamento {
+  if (!salvo) return novo;
+  const salvas = new Map(salvo.uts.map((u) => [u.descricao, u.justificativa]));
+  return {
+    ...novo,
+    uts: novo.uts.map((u) => {
+      const justificativa = salvas.get(u.descricao);
+      return justificativa === undefined ? u : { ...u, justificativa };
+    }),
+  };
+}
+
 export const montarHistorico = (meses: MesPublicado[]): HistoricoFechamentos => ({
   tipo: 'fechamento-historico',
   versao: 2,
