@@ -301,7 +301,7 @@ const Admin = () => {
             </label>
             {preview && jaPublicado && !foraDaJanela && (
               <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                {rotuloMes(mes)} já está publicado; esta planilha vai substituí-lo.
+                {rotuloMes(mes)} já está publicado: os valores serão atualizados, mas as justificativas já salvas no sistema serão mantidas (as da planilha só entram em UTs novas).
               </p>
             )}
             {vaiSair.length > 0 && !foraDaJanela && (

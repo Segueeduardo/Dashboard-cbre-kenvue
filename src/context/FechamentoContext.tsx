@@ -2,7 +2,7 @@ import React, {
   createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode,
 } from 'react';
 import type { Fechamento, MesPublicado } from '../types/fechamento.types';
-import { adicionarMes, lerHistorico, montarHistorico } from '../lib/fechamento';
+import { adicionarMes, lerHistorico, montarHistorico, preservarJustificativas } from '../lib/fechamento';
 import { supabase } from '../lib/supabase';
 
 /** Tabela criada em supabase/migrations/20261110000000_fechamento_medicao.sql */
@@ -72,6 +72,20 @@ export const FechamentoProvider: React.FC<{ children: ReactNode }> = ({ children
     loadData();
   }, [aplicar]);
 
+  /**
+   * Lê os meses direto do banco antes de gravar: a lista em memória pode estar
+   * velha (alguém editou uma justificativa depois que esta tela abriu) e
+   * gravá-la de volta apagaria essas edições.
+   */
+  const buscarAtual = useCallback(async (): Promise<MesPublicado[]> => {
+    const { data, error } = await supabase.from(TABELA).select('payload, updated_at').eq('id', 1).single();
+    if (error) {
+      if (error.code === 'PGRST116') return []; // nada publicado ainda
+      throw new Error(error.message);
+    }
+    return data ? lerHistorico(data.payload, data.updated_at) : [];
+  }, []);
+
   /** Grava a lista de meses na nuvem (ou apaga a linha se não sobrar nenhum) */
   const gravar = useCallback(async (lista: MesPublicado[]): Promise<ResultadoSalvar> => {
     try {
@@ -94,26 +108,42 @@ export const FechamentoProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const salvarFechamento = useCallback(
     async (f: Fechamento, mes: string): Promise<ResultadoSalvar> => {
-      const { meses: lista, removidos } = adicionarMes(mesesRef.current, {
+      let atuais: MesPublicado[];
+      try {
+        atuais = await buscarAtual();
+      } catch (err) {
+        console.error('Erro ao ler os meses publicados antes de gravar:', err);
+        return { ok: false, erro: 'Não consegui ler os dados já publicados; nada foi alterado. Tente de novo.' };
+      }
+      // Mês já publicado: as justificativas salvas no sistema têm prioridade sobre as da planilha
+      const jaPublicado = atuais.find((m) => m.mes === mes)?.fechamento;
+      const { meses: lista, removidos } = adicionarMes(atuais, {
         mes,
         atualizadoEm: new Date().toISOString(),
-        fechamento: f,
+        fechamento: preservarJustificativas(f, jaPublicado),
       });
       aplicar(lista);
       // Mostra o mês recém-publicado (se ele não saiu por ser antigo demais)
       if (lista.some((m) => m.mes === mes)) setMesSelecionado(mes);
       return { ...(await gravar(lista)), removidos };
     },
-    [aplicar, gravar]
+    [aplicar, buscarAtual, gravar]
   );
 
   const removerMes = useCallback(
     async (mes: string): Promise<ResultadoSalvar> => {
-      const lista = mesesRef.current.filter((m) => m.mes !== mes);
+      let atuais: MesPublicado[];
+      try {
+        atuais = await buscarAtual();
+      } catch (err) {
+        console.error('Erro ao ler os meses publicados antes de gravar:', err);
+        return { ok: false, erro: 'Não consegui ler os dados já publicados; nada foi alterado. Tente de novo.' };
+      }
+      const lista = atuais.filter((m) => m.mes !== mes);
       aplicar(lista);
       return gravar(lista);
     },
-    [aplicar, gravar]
+    [aplicar, buscarAtual, gravar]
   );
 
   // Passa pela função atualizar_justificativa do banco (migração 20261112000000),
